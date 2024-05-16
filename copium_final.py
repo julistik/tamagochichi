@@ -9,31 +9,30 @@ from pygame.locals import (
     MOUSEBUTTONDOWN,
     KEYDOWN,
     QUIT,
+    K_RETURN
 )
 
 os.chdir(os.path.dirname(__file__))
 
-def absent(n):
+
+def absent():
     start_time = time.time()
-    while time.time() - start_time < n:
+    while time.time() - start_time < 5:
         global state
         state = 'ABSENT'
     state = 'RUNNING'
 
-def f_with_timer(f = 2):
-   threadd = threading.Thread(target=lambda: absent(f))
-   threadd.start()
 
-#def ending():
-   # global state
-   # state = 'END'
 
+def f_with_timer():
+    threadd = threading.Thread(target=absent)
+    threadd.start()
 
 
 class MyButton:
 
-    def __init__(self, path, x, y, callbacks = [],
-                 screen_width=600, 
+    def __init__(self, path, x, y, callbacks=[],
+                 screen_width=600,
                  screen_height=700) -> None:
         self.image = pygame.image.load(path).convert_alpha()
         self.width = self.image.get_width()
@@ -47,18 +46,19 @@ class MyButton:
     def clicked(self):
         mouse_x, mouse_y = pygame.mouse.get_pos()
         if self.x <= mouse_x <= self.x + self.width and \
-            self.y <= mouse_y <= self.y + self.height:
+                self.y <= mouse_y <= self.y + self.height:
             return True
         return False
-    
+
     def click(self):
-         for c in self.callbacks:
-           c()
+        for c in self.callbacks:
+            c()
+
 
 class MyBar:
 
     def __init__(self, x, y, decrease, increase, colour,
-                 screen_width=600, 
+                 screen_width=600,
                  screen_height=700) -> None:
         self.width = 166
         self.height = 23
@@ -71,12 +71,13 @@ class MyBar:
         self.decrease = decrease
         self.colour = colour
         self.increase = increase
-    
+
     def decreasing(self):
         self.current_bar -= self.decrease
-        if self.current_bar < 0:
+        if self.current_bar <= 0:
             self.current_bar = 0
-    
+            die()
+
     def increasing(self):
         self.current_bar += self.increase
         if self.current_bar > 100:
@@ -93,11 +94,13 @@ image_background = 'background.jpg'
 pygame.mixer.init()
 music = pygame.mixer.music.load('music.ogg')
 pygame.mixer.music.set_volume(0.5)
-pygame.mixer.music.play(loops = -1)
+pygame.mixer.music.play(loops=-1)
 background = pygame.image.load(image_background)
 eepy = pygame.image.load('eepy.png')
 full = pygame.image.load('full.png')
 fun = pygame.image.load('fun.png')
+final = pygame.image.load('final.png')
+final = pygame.transform.scale(final, (500, 50))
 bunny = pygame.image.load('bunny.png').convert_alpha()
 bunny_width = bunny.get_width()
 bunny_height = bunny.get_height()
@@ -105,9 +108,9 @@ bunny_height = bunny.get_height()
 white = (255, 255, 255)
 clock = pygame.time.Clock()
 
-food_bar = MyBar(414, 23, 0.005555, 2, (90, 169, 83))
+food_bar = MyBar(414, 23, 0.4, 2, (90, 169, 83))
 sleep_bar = MyBar(414, 52, 0.003555, 3, (88, 187, 190))
-fun_bar = MyBar(414,81, 0.007555, 1, (228, 197, 112))
+fun_bar = MyBar(414, 81, 0.007555, 1, (228, 197, 112))
 
 bars = [
     food_bar,
@@ -117,11 +120,10 @@ bars = [
 
 feed_button = MyButton('feed.png', 25, 600, [food_bar.increasing])
 play_button = MyButton('play.png', 175, 605, [fun_bar.increasing])
-sleep_button = MyButton('sleep.png', 305, 605, [sleep_bar.increasing, lambda: f_with_timer(10)])
-work_button = MyButton('work.png', 445, 605, [lambda: f_with_timer(5)])
+sleep_button = MyButton('sleep.png', 305, 605, [sleep_bar.increasing, f_with_timer])
+work_button = MyButton('work.png', 445, 605)
 settings_button = MyButton('settings.png', 20, 20)
 shop_button = MyButton('shop.png', 20, 92)
-
 
 buttons = [
     feed_button,
@@ -132,11 +134,19 @@ buttons = [
     shop_button
 ]
 
+
+
+def die(total_end=False):  # смерть:(
+    global running
+    running = False
+
+
 state = 'RUNNING'
+global running
 running = True
 while running:
-    print(state)
-    events = pygame.event.get()
+    print(state) 
+    events = pygame.event.get()  
     for event in events:
         if event.type == pygame.QUIT:
             running = False
@@ -153,7 +163,7 @@ while running:
                         continue
     for bar in bars:
         bar.decreasing()
-    
+
     screen.blit(background, (0, 0))
     screen.blit(bunny, (screen_width / 2 - bunny_width / 2, screen_height / 2 - bunny_height / 2))
     screen.blit(full, (383, 23))
@@ -163,11 +173,24 @@ while running:
     for button in buttons:
         screen.blit(button.image, (button.x, button.y))
     for bar in bars:
-        current_width = (bar.current_bar / bar.max_bar) * bar.width    
+        current_width = (bar.current_bar / bar.max_bar) * bar.width
         pygame.draw.rect(screen, white, (bar.x, bar.y, bar.width, bar.height))
-        pygame.draw.rect(screen, bar.colour, (bar.x, bar.y, current_width, bar.height))    
+        pygame.draw.rect(screen, bar.colour, (bar.x, bar.y, current_width, bar.height))
     pygame.display.update()
     clock.tick(60)
 
+while running == False:
+    pygame.mixer_music.stop()
+    screen.fill((0, 0, 0))
+    screen.blit(final, (50, 500))
+    for button in buttons:
+        if button == settings_button:
+            screen.blit(button.image, (button.x, button.y))
+    pygame.display.update()
+    events = pygame.event.get()
+    for event in events:
+        if event.type == pygame.QUIT:
+            running = True
+        elif event.type == pygame.K_RETURN:
+            running = True
 pygame.quit()
-# мнррм
